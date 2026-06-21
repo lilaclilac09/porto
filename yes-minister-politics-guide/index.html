@@ -1,0 +1,325 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Yes, Minister — Politics Adviser</title>
+<style>
+  :root{
+    --bg:#0e1116; --panel:#161b22; --panel2:#1c232d; --line:#2b333d;
+    --ink:#e6edf3; --muted:#9aa7b4; --accent:#c9a227; --accent2:#7aa2f7;
+    --good:#3fb950; --bad:#f85149;
+    --radius:14px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.55}
+  header{padding:28px 20px 18px;border-bottom:1px solid var(--line);
+    background:radial-gradient(1200px 200px at 50% -60px,rgba(201,162,39,.18),transparent)}
+  .wrap{max-width:980px;margin:0 auto;padding:0 18px}
+  h1{margin:0;font-size:26px;letter-spacing:.3px}
+  h1 .sub{display:block;font-size:13px;color:var(--muted);font-weight:400;margin-top:6px}
+  nav{display:flex;gap:6px;flex-wrap:wrap;margin-top:18px}
+  nav button{background:var(--panel);color:var(--muted);border:1px solid var(--line);
+    padding:9px 14px;border-radius:999px;cursor:pointer;font-size:14px;transition:.15s}
+  nav button:hover{color:var(--ink);border-color:var(--accent)}
+  nav button.active{background:var(--accent);color:#1a1407;border-color:var(--accent);font-weight:600}
+  main{padding:26px 0 80px}
+  .panel{display:none}
+  .panel.active{display:block;animation:fade .25s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Adviser */
+  .lead{color:var(--muted);margin:0 0 18px;font-size:15px}
+  .field{display:block;margin:0 0 8px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+  select,input[type=text]{width:100%;background:var(--panel2);color:var(--ink);
+    border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:15px}
+  .result{margin-top:22px;background:var(--panel);border:1px solid var(--line);
+    border-left:4px solid var(--accent);border-radius:var(--radius);padding:20px 22px}
+  .result h3{margin:0 0 6px;font-size:13px;color:var(--accent);text-transform:uppercase;letter-spacing:.1em}
+  .result .move{font-size:20px;margin:0 0 12px;font-weight:600}
+  .result p{margin:0 0 10px;color:var(--ink)}
+  .result .how{color:var(--muted);font-size:14px}
+  .tag{display:inline-block;font-size:11px;padding:3px 9px;border-radius:999px;
+    background:var(--panel2);border:1px solid var(--line);color:var(--muted);margin-right:6px}
+  .tag.princ{color:var(--accent2);border-color:var(--accent2)}
+
+  /* Search + cards */
+  .search{margin:0 0 18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:16px 18px;margin:0 0 12px}
+  .card h4{margin:0 0 6px;font-size:16px}
+  .card p{margin:0 0 6px;color:var(--muted);font-size:14px}
+  .card .sig{font-size:13px;color:var(--ink)}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
+  td.phrase{font-weight:600;white-space:nowrap}
+  .hidden{display:none!important}
+  .empty{color:var(--muted);padding:18px;text-align:center}
+  footer{border-top:1px solid var(--line);color:var(--muted);font-size:13px;padding:18px 0}
+  a{color:var(--accent2)}
+  .pill-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <h1>Yes, Minister — Politics Adviser
+      <span class="sub">An interactive front-end to the Whitehall playbook. Tell it what you want; it tells you the move.</span>
+    </h1>
+    <nav id="tabs">
+      <button data-tab="adviser" class="active">🎯 Adviser</button>
+      <button data-tab="tactics">📖 Tactics</button>
+      <button data-tab="characters">🎭 Characters</button>
+      <button data-tab="glossary">🗝️ Glossary</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ADVISER -->
+  <section id="adviser" class="panel active">
+    <p class="lead">Pick your objective — or type one — and get the recommended manoeuvre, drawn straight from the playbook.</p>
+    <label class="field" for="goal">What do you want to do?</label>
+    <select id="goal"></select>
+    <div class="result" id="advice"></div>
+  </section>
+
+  <!-- TACTICS -->
+  <section id="tactics" class="panel">
+    <input class="search" id="tacticSearch" type="text" placeholder="Search tactics… (e.g. delay, committee, non-answer)" />
+    <div id="tacticList"></div>
+  </section>
+
+  <!-- CHARACTERS -->
+  <section id="characters" class="panel">
+    <input class="search" id="charSearch" type="text" placeholder="Search characters… (e.g. Humphrey, civil service, adviser)" />
+    <div id="charList"></div>
+  </section>
+
+  <!-- GLOSSARY -->
+  <section id="glossary" class="panel">
+    <input class="search" id="glossSearch" type="text" placeholder="Search phrases… (e.g. courageous, respect, committee)" />
+    <table>
+      <thead><tr><th>They say…</th><th>They mean…</th></tr></thead>
+      <tbody id="glossBody"></tbody>
+    </table>
+    <div class="empty hidden" id="glossEmpty">No matching phrase.</div>
+  </section>
+
+  <footer>Satire from <em>Yes Minister</em> / <em>Yes, Prime Minister</em> (Antony Jay &amp; Jonathan Lynn). Use it to recognise these moves as much as to play them.</footer>
+</main>
+
+<script>
+/* ---------- DATA ---------- */
+const GOALS = [
+  {q:"Kill a proposal without being blamed", move:"Refer it to an interdepartmental committee",
+   why:"Nobody can be blamed for a decision that was never quite made.",
+   how:"Give it broad terms of reference, pack it so it can't reach a clean conclusion, and ensure its report lands during recess or a reshuffle."},
+  {q:"Stop action while looking diligent", move:"Commission a review or call for further consultation",
+   why:"Delay is the safest weapon — you're not opposing anything, merely being thorough.",
+   how:"Studies take time; by the time they report, the political moment has passed."},
+  {q:"Avoid committing to anything", move:"Give the non-answer; agree in principle, dispute the practicalities",
+   why:"Direct refusal starts a fight you might lose and a grievance that lasts.",
+   how:"Agree the goal enthusiastically, then dispute only timing, funding, legal advice and implementation — forever."},
+  {q:"Get my preferred option chosen", move:"Frame it as the moderate one",
+   why:"Don't argue against rivals — arrange the choices so yours is the only sane answer.",
+   how:"Offer three options: one disastrous, one absurd, and yours, which now looks like wise moderation."},
+  {q:"Defuse a brewing crisis", move:"Run the Four-Stage Strategy",
+   why:"Let the clock decide so no person ever chose the outcome.",
+   how:"1) Nothing will happen. 2) Something may, but do nothing. 3) Maybe act, but nothing can be done. 4) Too late now."},
+  {q:"Stay safe if it goes wrong", move:"Keep the risky part verbal; let it be decided 'at official level'",
+   why:"Plausible deniability — arrange matters so you didn't technically know.",
+   how:"Don't put the dangerous bit in writing; keep the awkward detail in an annex the principal 'was free to read'."},
+  {q:"Neutralise an over-eager minister/boss", move:"Bury them in boxes and hand them harmless wins",
+   why:"A principal buried in paperwork and ceremony has no time to cause real change.",
+   how:"Flatter the instinct, redirect the action: 'Exactly so — and the best way to achieve that is…'."},
+  {q:"Warn that a policy is career-ending", move:"Call it a 'courageous decision'",
+   why:"Politeness that lands as a threat without being one.",
+   how:"'Bold' = risky but survivable. 'Courageous' = voters will hate it. 'Very courageous' = pack your office."},
+  {q:"Win without winning the vote", move:"Control the agenda order and the timing",
+   why:"What gets discussed, in what order and when, beats who has the votes.",
+   how:"Put your item after a long exhausting one; put what you want killed last, when everyone wants to go home."},
+  {q:"[Principal] Avoid being managed by officials", move:"Demand options AND a written recommendation",
+   princ:true, why:"The summary is where the power hides — what's left out never gets debated.",
+   how:"Ask 'what are you not telling me?', read the annexes, and keep an independent special adviser."},
+  {q:"[Principal] Actually get something done", move:"Set a hard deadline and attach a name to delivery",
+   princ:true, why:"Diffused responsibility is how things quietly die.",
+   how:"A dated deadline plus a single accountable person defeats the committee/review stall."},
+  {q:"[Principal] Float an idea safely", move:"Test it as an anonymous leak first",
+   princ:true, why:"If it dies, you never proposed it.",
+   how:"Brief it unattributed, watch the reaction; own it only if it flies. Time a friendly story to bury a hostile one."},
+];
+
+const TACTICS = [
+  {name:"Strategic delay", tags:"delay review study consultation time",
+   desc:"The master tactic. Nobody is blamed for a decision never quite made.",
+   sig:"Commission a study · refer to committee · request more consultation · 'the time is not yet right'."},
+  {name:"The Four-Stage Strategy", tags:"crisis disclosure escalation clock",
+   desc:"An escalation ladder that lets the clock kill momentum.",
+   sig:"Nothing will happen → do nothing → nothing can be done → too late now."},
+  {name:"Control the information", tags:"information summary briefing red box volume",
+   desc:"Whoever decides what the decision-maker sees makes the decision.",
+   sig:"Summarise selectively · hide the key fact in volume · time the flow too late to act."},
+  {name:"Control the agenda", tags:"agenda meeting order timing vote",
+   desc:"Order and timing beat the headcount.",
+   sig:"Sequence items to exhaust the room · 'we're running short of time'."},
+  {name:"Never say no", tags:"refusal yes agree principle",
+   desc:"Agree in principle; make the practicalities never line up.",
+   sig:"Enthusiastic 'yes', then dispute timing, funding, legality, implementation."},
+  {name:"Framing the options", tags:"options choice framing moderate",
+   desc:"Arrange the menu so your answer is the only reasonable one.",
+   sig:"Disaster + absurdity + your option (the 'sensible' one)."},
+  {name:"Burying in committee", tags:"committee working group review responsibility",
+   desc:"Send a subject to the right committee and it may never return.",
+   sig:"Broad/narrow terms of reference · pack the group · report during recess."},
+  {name:"The non-answer", tags:"non-answer evasion passive voice question",
+   desc:"Speak at length while committing to nothing.",
+   sig:"Answer a different question · passive voice · 'let me be absolutely clear'."},
+  {name:"Plausible deniability", tags:"deniability written verbal official annex",
+   desc:"Arrange not to technically know.",
+   sig:"Keep it verbal · decide 'at official level' · awkward detail in an annex."},
+  {name:"Managing the principal", tags:"minister boss flattery boxes wins",
+   desc:"Keep them busy, flattered and supplied with wins that don't matter.",
+   sig:"Bury in red boxes · ceremonial duties · 'exactly so, Minister'."},
+  {name:"Leaks vs. briefings", tags:"leak press media briefing disclosure",
+   desc:"Same disclosure; the label depends on who did it.",
+   sig:"Float ideas anonymously · time a story to drown another."},
+];
+
+const CHARS = [
+  {name:"Jim Hacker", side:"Political", princ:true, tags:"minister prime pm political hacker",
+   game:"Visibility and survival — be seen winning and get re-elected.",
+   sig:"Grand announcements; chases the press; periodic defiance when he spots he's being managed."},
+  {name:"Sir Humphrey Appleby", side:"Civil Service", princ:true, tags:"permanent secretary cabinet humphrey mandarin",
+   game:"Continuity and control — keep the machine unchanged and real power with officials.",
+   sig:"The non-answer, strategic delay, the Four-Stage Strategy, controlling Hacker's information."},
+  {name:"Bernard Woolley", side:"Civil Service", princ:true, tags:"private secretary bernard middle",
+   game:"Survive divided loyalty — serve the minister by role, the service by career.",
+   sig:"Pedantic precision; quiet truth-telling; the hinge between Hacker and Humphrey."},
+  {name:"Sir Arnold Robinson", side:"Civil Service", tags:"cabinet secretary arnold freedom information",
+   game:"The apex mandarin — guard the whole service from the top.",
+   sig:"Olympian detachment; mentors Humphrey; later (ironically) heads a freedom-of-information campaign."},
+  {name:"Sir Frederick 'Jumbo' Stewart", side:"Civil Service", tags:"jumbo frederick stewart permanent secretary",
+   game:"Coordinate the mandarins behind the scenes.",
+   sig:"Backstage coordination and mutual back-scratching among Permanent Secretaries."},
+  {name:"The wider mandarinate", side:"Civil Service", tags:"permanent secretaries treasury foreign office turf",
+   game:"Defend each department's turf, but close ranks against politicians.",
+   sig:"Interdepartmental committees, coordinated foot-dragging, 'the official line'."},
+  {name:"Annie Hacker", side:"Political", tags:"wife annie honest sounding board",
+   game:"Honest broker at home — tell Jim the unvarnished truth.",
+   sig:"Blunt reality-checks; sees through Humphrey's flattery."},
+  {name:"Dorothy Wainwright", side:"Political", tags:"special adviser dorothy wainwright number 10",
+   game:"Political counterweight — advise Hacker in his interest, out-think Humphrey.",
+   sig:"Spots Humphrey's manoeuvres early; supplies political (not administrative) options."},
+  {name:"Frank Weisel", side:"Political", tags:"frank weisel political adviser outsider",
+   game:"Keep the reform agenda alive — then get absorbed by the machine.",
+   sig:"Distrusts officials; pushes Hacker to fight; steadily neutralised (denied info and office)."},
+  {name:"Sir Desmond Glazebrook", side:"Outside network", tags:"banker city desmond glazebrook",
+   game:"Wire the City into Whitehall.",
+   sig:"Trades on connections; not very bright — part of the joke about how such men rise."},
+  {name:"The off-screen PM", side:"Political", tags:"prime minister pm number 10 unseen",
+   game:"The power above (Yes Minister era), invoked by all sides.",
+   sig:"Both Hacker and Humphrey manoeuvre around 'what Number 10 wants'. Hacker later fills the vacancy."},
+  {name:"Party officials / whips", side:"Political", tags:"whip party chairman reshuffle discipline",
+   game:"Party discipline and electoral survival.",
+   sig:"Pressure, patronage and the implicit threat of the reshuffle."},
+  {name:"The press", side:"Outside network", tags:"press media journalist interview headline",
+   game:"Chase the story — be used by, and use, both sides.",
+   sig:"The hostile interview, the leaked exclusive, the timed headline."},
+];
+
+const GLOSSARY = [
+  ["Yes, Minister.","No. (Polite agreement that nothing will change.)"],
+  ["A very courageous decision.","That decision will end your career — voters will hate it."],
+  ["A bold decision.","Risky, but you might survive it."],
+  ["With respect…","You are wrong."],
+  ["With the greatest possible respect…","You are completely, dangerously wrong."],
+  ["In due course / in the fullness of time.","Never — or so late it won't matter."],
+  ["The time is not yet right.","I will make sure the time is never right."],
+  ["Under consideration.","We've lost the file."],
+  ["Under active consideration.","We're looking for the file."],
+  ["We must proceed with caution.","We must not proceed."],
+  ["We need to set up a committee.","I'm going to bury this."],
+  ["This needs further study / a review.","I'm going to delay this until it dies."],
+  ["We should consult more widely.","More delay, dressed as diligence."],
+  ["It's a very complex/sensitive area.","I don't want you touching it."],
+  ["Not a matter for this department.","Not my problem; pass it on and lose it."],
+  ["Mistakes were made.","Something went wrong and no one will be named."],
+  ["I'm glad you asked me that.","I am about to not answer that."],
+  ["Let me be absolutely clear.","I am about to be deliberately unclear."],
+  ["A leak.","An unauthorised disclosure (by someone I dislike)."],
+  ["Keeping the press informed / a briefing.","The same disclosure, but done by my side."],
+  ["Taken at official level.","Decided by civil servants, so the minister can disown it."],
+  ["Noted.","Heard, and intend to do nothing."],
+  ["A full and frank exchange of views.","A blazing row in which nothing was agreed."],
+  ["The public interest.","Often: whatever protects the department or avoids embarrassment."],
+  ["Open government.","A contradiction — you can be open OR you can govern."],
+];
+
+/* ---------- RENDER ---------- */
+const $ = s => document.querySelector(s);
+
+// tabs
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    $('#'+b.dataset.tab).classList.add('active');
+  };
+});
+
+// adviser
+const goalSel = $('#goal');
+GOALS.forEach((g,i)=>{
+  const o=document.createElement('option'); o.value=i; o.textContent=g.q; goalSel.appendChild(o);
+});
+function renderAdvice(){
+  const g = GOALS[goalSel.value];
+  $('#advice').innerHTML = `
+    <h3>Recommended manoeuvre ${g.princ?'<span class="tag princ">for the principal</span>':''}</h3>
+    <p class="move">${g.move}</p>
+    <p>${g.why}</p>
+    <p class="how"><strong>How:</strong> ${g.how}</p>`;
+}
+goalSel.onchange = renderAdvice; renderAdvice();
+
+// tactics
+function renderTactics(f=""){
+  f=f.toLowerCase();
+  const list = TACTICS.filter(t=>(t.name+t.tags+t.desc).toLowerCase().includes(f));
+  $('#tacticList').innerHTML = list.length? list.map(t=>`
+    <div class="card"><h4>${t.name}</h4><p>${t.desc}</p><div class="sig">${t.sig}</div></div>`).join('')
+    : '<div class="empty">No matching tactic.</div>';
+}
+$('#tacticSearch').oninput=e=>renderTactics(e.target.value); renderTactics();
+
+// characters
+function renderChars(f=""){
+  f=f.toLowerCase();
+  const list = CHARS.filter(c=>(c.name+c.side+c.tags+c.game).toLowerCase().includes(f));
+  $('#charList').innerHTML = list.length? list.map(c=>`
+    <div class="card">
+      <h4>${c.name} ${c.princ?'<span class="tag princ">principal</span>':''}</h4>
+      <div class="pill-row"><span class="tag">${c.side}</span></div>
+      <p style="margin-top:8px">${c.game}</p>
+      <div class="sig"><strong>Signature:</strong> ${c.sig}</div>
+    </div>`).join('')
+    : '<div class="empty">No matching character.</div>';
+}
+$('#charSearch').oninput=e=>renderChars(e.target.value); renderChars();
+
+// glossary
+function renderGloss(f=""){
+  f=f.toLowerCase();
+  const list = GLOSSARY.filter(g=>(g[0]+g[1]).toLowerCase().includes(f));
+  $('#glossBody').innerHTML = list.map(g=>`<tr><td class="phrase">${g[0]}</td><td>${g[1]}</td></tr>`).join('');
+  $('#glossEmpty').classList.toggle('hidden', list.length>0);
+}
+$('#glossSearch').oninput=e=>renderGloss(e.target.value); renderGloss();
+</script>
+</body>
+</html>
